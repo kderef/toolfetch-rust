@@ -14,3 +14,8 @@ cargo build --release
 **druid**   (gui toolkit)  
 **libmath** (round function)  
 **winapi**  (dialog function)  
+
+---  
+# TODO  
+* add *disk info* segment to UI  
+* linux/mac support
