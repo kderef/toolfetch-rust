@@ -11,6 +11,6 @@ cargo build --release
 ```
 
 # dependencies
-**druid**   (gui toolkit)
-**libmath** (round function)
-**winapi**  (dialog function)
+**druid**   (gui toolkit)  
+**libmath** (round function)  
+**winapi**  (dialog function)  
