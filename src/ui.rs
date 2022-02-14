@@ -253,30 +253,6 @@ impl Hardware {
         let cores_div: i32 = cores_str.parse().unwrap();
         return cores_div / 2;
     }
-    pub fn disk() -> Disk {
-        let totalspace = output_from(vec!["WMIC logicaldisk get size"])
-            .split("\n")
-            .collect::<Vec<&str>>()[1]
-            .to_string()
-            .trim()
-            .parse::<i64>()
-            .unwrap();
-
-        let freespace = output_from(vec!["WMIC logicaldisk get freespace"])
-            .split("\n")
-            .collect::<Vec<&str>>()[1]
-            .to_string()
-            .trim()
-            .parse::<i64>()
-            .unwrap();
-        let usedspace: i64 = totalspace - freespace;
-
-        return Disk {
-            capacity: round::floor(totalspace as f64 / 1073741824 as f64, 2),
-            free: round::floor(freespace as f64 / 1073741824 as f64, 2),
-            used: round::floor(usedspace as f64 / 1073741824 as f64, 2),
-        };
-    }
 }
 
 impl Network {
@@ -303,5 +279,32 @@ impl Network {
             "(Invoke-WebRequest -uri https://api6.ipify.org).Content",
         ]);
         return response.trim().to_string();
+    }
+}
+// create a new Disk struct
+impl Disk {
+    pub fn new() -> Disk {
+        let totalspace = output_from(vec!["WMIC logicaldisk get size"])
+            .split("\n")
+            .collect::<Vec<&str>>()[1]
+            .to_string()
+            .trim()
+            .parse::<i64>()
+            .unwrap();
+
+        let freespace = output_from(vec!["WMIC logicaldisk get freespace"])
+            .split("\n")
+            .collect::<Vec<&str>>()[1]
+            .to_string()
+            .trim()
+            .parse::<i64>()
+            .unwrap();
+        let usedspace: i64 = totalspace - freespace;
+
+        return Disk {
+            capacity: round::floor(totalspace as f64 / 1073741824 as f64, 2),
+            free: round::floor(freespace as f64 / 1073741824 as f64, 2),
+            used: round::floor(usedspace as f64 / 1073741824 as f64, 2)
+        };
     }
 }
