@@ -63,11 +63,12 @@ pub fn start(window_size: druid::Size, window_title: LocalizedString<State>) {
 
     // create the initial app state
     let ip4_static = Network::private_ip4();
+    let cpu = Hardware::cpu();
     let initial_state = State {
         cpu: format!(
             "{} with {} cores",
-            Hardware::cpu_name(),
-            Hardware::cpu_cores()
+            cpu.0,
+            cpu.1
         ),
         ram: Hardware::ram(),
         ip4: (Network::private_ip4(), Network::public_ip4()),
@@ -236,10 +237,12 @@ impl OS {
 }
 
 impl Hardware {
-    pub fn cpu_name() -> String {
+    pub fn cpu() -> (String, i16) {
+        let cores = getenv("NUMBER_OF_PROCESSORS", "0")
+            .parse::<i16>().unwrap() / 2;
         let cpu_raw = output_from(vec!["WMIC CPU GET NAME"]);
         let cpu_def: Vec<&str> = cpu_raw.trim().split("\n").collect();
-        return cpu_def[1].to_string();
+        return (cpu_def[1].to_string(), cores);
     }
     pub fn ram() -> i32 {
         let args = vec![
@@ -247,11 +250,6 @@ impl Hardware {
         ];
         let total_ram = output_from(args);
         return total_ram.trim().parse().unwrap();
-    }
-    pub fn cpu_cores() -> i32 {
-        let cores_str = getenv("NUMBER_OF_PROCESSORS", "0");
-        let cores_div: i32 = cores_str.parse().unwrap();
-        return cores_div / 2;
     }
 }
 
