@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(unused_assignments)]
 
 use druid::{
     widget::{Align, Button, CrossAxisAlignment, Flex, FlexParams, Label, MainAxisAlignment},
@@ -167,7 +168,7 @@ fn build_root_widget() -> impl Widget<State> {
 fn subnet(ip4: &String) -> &'static str {
     let octet = ip4.split(".").collect::<Vec<&str>>()[0]
         .parse::<i32>()
-        .unwrap();
+        .unwrap_or(0);
     if octet <= 223 && octet >= 192 {
         return "255.255.255.0";
     }
@@ -252,11 +253,10 @@ fn output_from(args: Vec<&str>) -> String {
 }
 impl OS {
     pub fn username() -> String {
-        if env::consts::OS == "windows" {
-            return getenv("USERNAME", "undefined");
-        } else {
-            return getenv("USER", "undefined");
-        }
+        #[cfg(target_os = "windows")]
+        return getenv("USERNAME", "undefined");
+        #[cfg(not(target_os = "windows"))]
+        return getenv("USER", "undefined");
     }
     pub fn hostname() -> String {
         if env::consts::OS == "windows" {
@@ -313,6 +313,7 @@ impl Hardware {
         let mut found = false;
         for i in total_ram.split("\n") {
             if i.trim().starts_with("Memory:") {
+                found = true;
                 return i.trim().split("Memory: ").collect::<Vec<&str>>()[1]
                     .replace("GB", "")
                     .trim()
@@ -327,6 +328,7 @@ impl Hardware {
         }
     }
 }
+#[cfg(target_os = "windows")]
 impl Network {
     pub fn private_ip4() -> String {
         let ip = output_from(vec![
@@ -353,7 +355,37 @@ impl Network {
         return response.trim().to_string();
     }
 }
+#[cfg(target_os = "macos")]
+impl Network {
+    pub fn private_ip4() -> String {
+        let mut command = std::process::Command::new("ipconfig");
+        command.args(["getifaddr", "en0"]);
+
+        let output = command.stdout(Stdio::piped()).output().unwrap();
+        return String::from_utf8(output.stdout).unwrap().trim().to_string();
+    }
+    pub fn private_ip6() -> String {
+        // TODO
+        return String::from("0");
+    }
+    pub fn public_ip4() -> String {
+        let mut command = std::process::Command::new("curl");
+        command.arg("http://ifconfig.me/ip");
+
+        let output = command.stdout(Stdio::piped()).output().unwrap();
+        return String::from_utf8(output.stdout).unwrap();
+    }
+    pub fn public_ip6() -> String {
+        let mut command = std::process::Command::new("curl");
+        command.arg("https://api6.ipify.org");
+
+        let output = command.stdout(Stdio::piped()).output().unwrap();
+        return String::from_utf8(output.stdout).unwrap();
+    }
+}
+
 // create a new Disk struct
+#[cfg(target_os = "windows")]
 impl Disk {
     pub fn new() -> Disk {
         let totalspace = output_from(vec!["WMIC logicaldisk get size"])
@@ -363,7 +395,6 @@ impl Disk {
             .trim()
             .parse::<i64>()
             .unwrap();
-
         let freespace = output_from(vec!["WMIC logicaldisk get freespace"])
             .split("\n")
             .collect::<Vec<&str>>()[1]
@@ -378,5 +409,11 @@ impl Disk {
             free: round::floor(freespace as f64 / 1073741824 as f64, 2),
             used: round::floor(usedspace as f64 / 1073741824 as f64, 2),
         };
+    }
+}
+#[cfg(target_os = "windows")]
+impl Disk {
+    pub fn new() -> Disk {
+        
     }
 }
