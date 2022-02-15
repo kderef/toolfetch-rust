@@ -193,15 +193,14 @@ fn getenv(key: &str, default: &str) -> String {
     }
     return return_val;
 }
-
+#[cfg(target_os = "windows")]
 fn output_from(args: Vec<&str>) -> String {
     let mut run = Command::new("powershell.exe");
     run.arg("-command");
-    #[cfg(target_os = "windows")]
     run.creation_flags(0x08000000); // do not spawn window
 
     if args.is_empty() {
-        return String::from("None");
+        return String::from("None")
     }
 
     if args.len() == 1 {
@@ -225,7 +224,36 @@ fn output_from(args: Vec<&str>) -> String {
 
     return stdout;
 }
+#[cfg(not(target_os = "windows"))]
+fn output_from(args: Vec<&str>) -> String {
+    let mut run = Command::new("bash");
+    run.arg("-c");
 
+    if args.is_empty() {
+        return String::from("None")
+    }
+
+    if args.len() == 1 {
+        run.arg(args[0]);
+    } else {
+        for arg in args {
+            run.arg(arg);
+        }
+    }
+
+    let output = run
+        // record output
+        .stdout(Stdio::piped())
+        // execute the command, wait for it to complete, then capture the output
+        .output()
+        // Blow up if the OS was unable to start the program
+        .unwrap();
+
+    // extract the raw bytes that we captured and interpret them as a string
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    return stdout;
+}
 impl OS {
     pub fn username() -> String {
         if env::consts::OS == "windows" {
@@ -251,7 +279,7 @@ impl OS {
         return raw.trim().to_string();
     }
 }
-
+#[cfg(target_os = "windows")]
 impl Hardware {
     pub fn cpu() -> (String, i16) {
         let cores = getenv("NUMBER_OF_PROCESSORS", "0")
@@ -268,7 +296,49 @@ impl Hardware {
         return total_ram.trim().parse().unwrap();
     }
 }
-
+#[cfg(target_os = "macos")]
+impl Hardware {
+    pub fn cpu() -> (String, i32) {
+        // cores //
+        let cores = num_cpus::get_physical() as i32;
+        // cpu //
+        let mut cpu_r = std::process::Command::new("sysctl");
+        cpu_r.args(["-n", "machdep.cpu.brand_string"]);
+        let output = cpu_r
+            .stdout(Stdio::piped())
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        
+        return (
+            stdout.split("\n").collect::<Vec<&str>>()[0]
+                .to_string(), 
+            cores
+        )
+    }
+    pub fn ram() -> i32 {
+        let args = vec![
+            "system_profiler SPHardwareDataType"
+        ];
+        let total_ram = output_from(args);
+        let mut found = false;
+        for i in total_ram.split("\n") {
+            if i.trim().starts_with("Memory:") {
+                return i
+                    .trim()
+                    .split("Memory: ")
+                    .collect::<Vec<&str>>()[1]
+                    .replace("GB", "")
+                    .trim()
+                    .parse::<i32>()
+                    .unwrap();
+            }
+        }
+        if !found {
+            return 0
+        } else {return 0}
+    }
+}
 impl Network {
     pub fn private_ip4() -> String {
         let ip = output_from(vec![
