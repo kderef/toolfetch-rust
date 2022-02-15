@@ -6,10 +6,13 @@ use druid::{
 };
 use math::round;
 use std::env;
+#[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use std::process::{Command, Stdio};
 
+#[cfg(target_os = "windows")]
 use std::ptr::null_mut as NULL;
+#[cfg(target_os = "windows")]
 use winapi::um::winuser;
 
 pub struct Hardware;
@@ -38,6 +41,7 @@ pub struct State {
     username: String,
     host_os: String,
 }
+#[cfg(target_os = "windows")]
 fn dialog(title: &str, text: &str) {
     let mut message_n = text.to_string();
     let mut title_n = title.to_string();
@@ -193,6 +197,7 @@ fn getenv(key: &str, default: &str) -> String {
 fn output_from(args: Vec<&str>) -> String {
     let mut run = Command::new("powershell.exe");
     run.arg("-command");
+    #[cfg(target_os = "windows")]
     run.creation_flags(0x08000000); // do not spawn window
 
     if args.is_empty() {
@@ -223,14 +228,25 @@ fn output_from(args: Vec<&str>) -> String {
 
 impl OS {
     pub fn username() -> String {
-        let username_val = getenv("USERNAME", "undefined");
-        return username_val;
+        if env::consts::OS == "windows" {
+            return getenv("USERNAME", "undefined")
+        }
+        else {
+            return getenv("USER", "undefined")
+        }
     }
     pub fn hostname() -> String {
-        let hostname_val = getenv("COMPUTERNAME", "undefined");
-        return hostname_val;
+        if env::consts::OS == "windows" {
+            return getenv("COMPUTERNAME", "undefined")
+        }
+        else {
+            return getenv("hostname", "undefined")
+        }
     }
     pub fn windows_version() -> String {
+        if env::consts::OS != "windows" {
+            panic!("ERROR: this function is windows only, you are running {}", env::consts::OS);
+        }
         let raw = output_from(vec!["(Get-WmiObject -class Win32_OperatingSystem).Caption"]);
         return raw.trim().to_string();
     }
