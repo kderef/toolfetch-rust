@@ -69,11 +69,7 @@ pub fn start(window_size: druid::Size, window_title: LocalizedString<State>) {
     let ip4_static = Network::private_ip4();
     let cpu = Hardware::cpu();
     let initial_state = State {
-        cpu: format!(
-            "{} with {} cores",
-            cpu.0,
-            cpu.1
-        ),
+        cpu: format!("{} with {} cores", cpu.0, cpu.1),
         ram: Hardware::ram(),
         ip4: (Network::private_ip4(), Network::public_ip4()),
         ip6: (Network::private_ip6(), Network::public_ip6()),
@@ -200,7 +196,7 @@ fn output_from(args: Vec<&str>) -> String {
     run.creation_flags(0x08000000); // do not spawn window
 
     if args.is_empty() {
-        return String::from("None")
+        return String::from("None");
     }
 
     if args.len() == 1 {
@@ -230,7 +226,7 @@ fn output_from(args: Vec<&str>) -> String {
     run.arg("-c");
 
     if args.is_empty() {
-        return String::from("None")
+        return String::from("None");
     }
 
     if args.len() == 1 {
@@ -257,23 +253,24 @@ fn output_from(args: Vec<&str>) -> String {
 impl OS {
     pub fn username() -> String {
         if env::consts::OS == "windows" {
-            return getenv("USERNAME", "undefined")
-        }
-        else {
-            return getenv("USER", "undefined")
+            return getenv("USERNAME", "undefined");
+        } else {
+            return getenv("USER", "undefined");
         }
     }
     pub fn hostname() -> String {
         if env::consts::OS == "windows" {
-            return getenv("COMPUTERNAME", "undefined")
-        }
-        else {
-            return getenv("hostname", "undefined")
+            return getenv("COMPUTERNAME", "undefined");
+        } else {
+            return getenv("hostname", "undefined");
         }
     }
     pub fn windows_version() -> String {
         if env::consts::OS != "windows" {
-            panic!("ERROR: this function is windows only, you are running {}", env::consts::OS);
+            panic!(
+                "ERROR: this function is windows only, you are running {}",
+                env::consts::OS
+            );
         }
         let raw = output_from(vec!["(Get-WmiObject -class Win32_OperatingSystem).Caption"]);
         return raw.trim().to_string();
@@ -282,8 +279,7 @@ impl OS {
 #[cfg(target_os = "windows")]
 impl Hardware {
     pub fn cpu() -> (String, i16) {
-        let cores = getenv("NUMBER_OF_PROCESSORS", "0")
-            .parse::<i16>().unwrap() / 2;
+        let cores = getenv("NUMBER_OF_PROCESSORS", "0").parse::<i16>().unwrap() / 2;
         let cpu_raw = output_from(vec!["WMIC CPU GET NAME"]);
         let cpu_def: Vec<&str> = cpu_raw.trim().split("\n").collect();
         return (cpu_def[1].to_string(), cores);
@@ -304,30 +300,20 @@ impl Hardware {
         // cpu //
         let mut cpu_r = std::process::Command::new("sysctl");
         cpu_r.args(["-n", "machdep.cpu.brand_string"]);
-        let output = cpu_r
-            .stdout(Stdio::piped())
-            .output()
-            .unwrap();
+        let output = cpu_r.stdout(Stdio::piped()).output().unwrap();
         let stdout = String::from_utf8(output.stdout).unwrap();
-        
         return (
-            stdout.split("\n").collect::<Vec<&str>>()[0]
-                .to_string(), 
-            cores
-        )
+            stdout.split("\n").collect::<Vec<&str>>()[0].to_string(),
+            cores,
+        );
     }
     pub fn ram() -> i32 {
-        let args = vec![
-            "system_profiler SPHardwareDataType"
-        ];
+        let args = vec!["system_profiler SPHardwareDataType"];
         let total_ram = output_from(args);
         let mut found = false;
         for i in total_ram.split("\n") {
             if i.trim().starts_with("Memory:") {
-                return i
-                    .trim()
-                    .split("Memory: ")
-                    .collect::<Vec<&str>>()[1]
+                return i.trim().split("Memory: ").collect::<Vec<&str>>()[1]
                     .replace("GB", "")
                     .trim()
                     .parse::<i32>()
@@ -335,8 +321,10 @@ impl Hardware {
             }
         }
         if !found {
-            return 0
-        } else {return 0}
+            return 0;
+        } else {
+            return 0;
+        }
     }
 }
 impl Network {
@@ -388,7 +376,7 @@ impl Disk {
         return Disk {
             capacity: round::floor(totalspace as f64 / 1073741824 as f64, 2),
             free: round::floor(freespace as f64 / 1073741824 as f64, 2),
-            used: round::floor(usedspace as f64 / 1073741824 as f64, 2)
+            used: round::floor(usedspace as f64 / 1073741824 as f64, 2),
         };
     }
 }
