@@ -226,15 +226,13 @@ fn output_from(args: Vec<&str>) -> String {
     let mut run = Command::new("bash");
     run.arg("-c");
 
-    if args.is_empty() {
-        return String::from("None");
-    }
-
-    if args.len() == 1 {
-        run.arg(args[0]);
-    } else {
-        for arg in args {
-            run.arg(arg);
+    match args.len() {
+        0 => return String::from("None"),
+        1 => run.arg(args[0]),
+        _ => {
+            for arg in args {
+                run.arg(arg);
+            }
         }
     }
 
