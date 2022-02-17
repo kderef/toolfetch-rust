@@ -60,11 +60,10 @@ fn dialog(title: &str, text: &str) {
         );
     }
 }
-pub fn start(window_size: druid::Size, window_title: LocalizedString<State>) {
+pub fn start(window_title: LocalizedString<State>) {
     // describe the main window
     let main_window = WindowDesc::new(build_root_widget)
-        .title(window_title)
-        .window_size(window_size);
+        .title(window_title);
 
     // create the initial app state
     let ip4_static = Network::private_ip4();
@@ -75,7 +74,7 @@ pub fn start(window_size: druid::Size, window_title: LocalizedString<State>) {
         ip4: (Network::private_ip4(), Network::public_ip4()),
         ip6: (Network::private_ip6(), Network::public_ip6()),
         subnet: subnet(&ip4_static.to_string()).to_string(),
-        host_os: OS::windows_version(),
+        host_os: format!("{:?}", OS::os_version()),
         username: OS::username(),
         hostname: OS::hostname(),
     };
@@ -183,12 +182,10 @@ fn subnet(ip4: &String) -> &'static str {
 }
 
 fn getenv(key: &str, default: &str) -> String {
-    let return_val: String;
     match env::var(key) {
-        Ok(val) => return_val = val,
-        Err(_e) => return_val = default.to_string(),
+        Ok(val) => return val,
+        Err(_e) => return default.to_string(),
     }
-    return return_val;
 }
 #[cfg(target_os = "windows")]
 fn output_from(args: Vec<&str>) -> String {
@@ -225,14 +222,11 @@ fn output_from(args: Vec<&str>) -> String {
 fn output_from(args: Vec<&str>) -> String {
     let mut run = Command::new("bash");
     run.arg("-c");
-
-    match args.len() {
-        0 => return String::from("None"),
-        1 => run.arg(args[0]),
-        _ => {
-            for arg in args {
-                run.arg(arg);
-            }
+    if args.is_empty() {
+        return String::from("None");
+    } else {
+        for arg in args {
+            run.arg(arg);
         }
     }
 
@@ -256,22 +250,34 @@ impl OS {
         #[cfg(not(target_os = "windows"))]
         return getenv("USER", "undefined");
     }
+    #[cfg(target_os = "windows")]
     pub fn hostname() -> String {
-        if env::consts::OS == "windows" {
-            return getenv("COMPUTERNAME", "undefined");
-        } else {
-            return getenv("hostname", "undefined");
-        }
+        return getenv("COMPUTERNAME", "undefined");
     }
-    pub fn windows_version() -> String {
-        if env::consts::OS != "windows" {
-            panic!(
-                "ERROR: this function is windows only, you are running {}",
-                env::consts::OS
-            );
-        }
+    #[cfg(not(target_os = "windows"))]
+    pub fn hostname() -> String {
+        let mut command = std::process::Command::new("hostname");
+        let output = command.stdout(Stdio::piped()).output().unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        return stdout.trim().to_string();
+    }
+    #[cfg(target_os = "windows")]
+    pub fn os_version() -> String {
         let raw = output_from(vec!["(Get-WmiObject -class Win32_OperatingSystem).Caption"]);
         return raw.trim().to_string();
+    }
+    #[cfg(target_os = "macos")]
+    pub fn os_version() -> String {
+        let mut command = std::process::Command::new("sw_vers");
+        let output = command.stdout(Stdio::piped()).output().unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        let os = stdout.split("\n").collect::<Vec<&str>>();
+        return format!(
+            "{} {} {}",
+            os[0].replace("ProductName:", "").trim().to_string(),
+            os[1].replace("ProductVersion:", "").trim().to_string(),
+            os[2].replace("BuildVersion:", "").trim().to_string()
+        );
     }
 }
 #[cfg(target_os = "windows")]
@@ -411,7 +417,5 @@ impl Disk {
 }
 #[cfg(target_os = "windows")]
 impl Disk {
-    pub fn new() -> Disk {
-        
-    }
+    pub fn new() -> Disk {}
 }
