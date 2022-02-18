@@ -1,14 +1,12 @@
 # toolfetch-rust
 roolfetch GUI in rust
 
-to run:  
-```bash
-cargo run
+build instructions:  
 ```
-to compile:  
-```bash
+git clone https://github.com/x-kvoid-x/toolfetch-rust
+cd toolfetch-rust
 cargo build --release
-```  
+```
 the executable will be in target/release/  
 
 # dependencies
