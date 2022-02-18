@@ -62,8 +62,13 @@ fn dialog(title: &str, text: &str) {
 }
 pub fn start(window_title: LocalizedString<State>) {
     // describe the main window
+    #[cfg(target_os = "macos")]
     let main_window = WindowDesc::new(build_root_widget)
         .title(window_title);
+    #[cfg(target_os = "windows")]
+    let main_window = WindowDesc::new(build_root_widget)
+        .title(window_title)
+        .window_size(druid::Size{width: 450.0, height: 250.0});
 
     // create the initial app state
     let ip4_static = Network::private_ip4();
@@ -414,8 +419,4 @@ impl Disk {
             used: round::floor(usedspace as f64 / 1073741824 as f64, 2),
         };
     }
-}
-#[cfg(target_os = "windows")]
-impl Disk {
-    pub fn new() -> Disk {}
 }
