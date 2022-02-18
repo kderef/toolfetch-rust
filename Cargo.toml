@@ -4,12 +4,12 @@ version = "1.2.0"
 edition = "2021"
 description = "a cross platform gui information fetching tool"
 repository = "https://github.com/x-kvoid-x/toolfetch-rust"
-
+build = "build.rs"
 
 # windows dependencies
 [target.'cfg(windows)'.dependencies]
 druid = "0.7.0"
-winapi = "*"
+winapi = "0.3.9"
 libmath = "0.2.1"
 
 # macos dependencies
@@ -17,3 +17,6 @@ libmath = "0.2.1"
 druid = "0.7.0"
 libmath = "0.2.1"
 num_cpus = "1.13.1"
+
+[build-dependencies]
+winres = "0.1"

@@ -43,7 +43,7 @@ pub struct State {
     host_os: String,
 }
 #[cfg(target_os = "windows")]
-fn dialog(title: &str, text: &str) {
+pub fn dialog(title: &str, text: &str) {
     let mut message_n = text.to_string();
     let mut title_n = title.to_string();
     message_n.push('\0');
@@ -72,6 +72,7 @@ pub fn start(window_title: LocalizedString<State>) {
             height: 250.0,
         });
 
+        
     // create the initial app state
     let ip4_static = Network::private_ip4();
     let cpu = Hardware::cpu();
