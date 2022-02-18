@@ -109,27 +109,27 @@ fn build_root_widget() -> impl Widget<State> {
 
     let btn_programs =
         Button::new("install/remove programs").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            let _ = std::process::Command::new("control.exe")
+            let _ = Command::new("control.exe")
                 .arg("appwiz.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
         });
     let btn_network =
         Button::new("network connections").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            let _ = std::process::Command::new("control.exe")
+            let _ = Command::new("control.exe")
                 .arg("ncpa.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
         });
     let btn_admin = Button::new("admin tools").on_click(|_ctx, _data: &mut State, _env: &Env| {
-        let _ = std::process::Command::new("control.exe")
+        let _ = Command::new("control.exe")
             .args(["/name", "Microsoft.AdministrativeTools"])
             .spawn()
             .expect("failed to run control.exe");
     });
     let btn_features =
         Button::new("windows features").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            let _ = std::process::Command::new("rundll32.exe")
+            let _ = Command::new("rundll32.exe")
                 .arg("shell32.dll,Control_RunDLL")
                 .arg("appwiz.cpl,,2")
                 .spawn()
@@ -261,7 +261,7 @@ impl OS {
     }
     #[cfg(not(target_os = "windows"))]
     pub fn hostname() -> String {
-        let mut command = std::process::Command::new("hostname");
+        let mut command = Command::new("hostname");
         let output = command.stdout(Stdio::piped()).output().unwrap();
         let stdout = String::from_utf8(output.stdout).unwrap();
         return stdout.trim().to_string();
@@ -273,7 +273,7 @@ impl OS {
     }
     #[cfg(target_os = "macos")]
     pub fn os_version() -> String {
-        let mut command = std::process::Command::new("sw_vers");
+        let mut command = Command::new("sw_vers");
         let output = command.stdout(Stdio::piped()).output().unwrap();
         let stdout = String::from_utf8(output.stdout).unwrap();
         let os = stdout.split("\n").collect::<Vec<&str>>();
@@ -307,7 +307,7 @@ impl Hardware {
         // cores //
         let cores = num_cpus::get_physical() as i32;
         // cpu //
-        let mut cpu_r = std::process::Command::new("sysctl");
+        let mut cpu_r = Command::new("sysctl");
         cpu_r.args(["-n", "machdep.cpu.brand_string"]);
         let output = cpu_r.stdout(Stdio::piped()).output().unwrap();
         let stdout = String::from_utf8(output.stdout).unwrap();
@@ -367,7 +367,7 @@ impl Network {
 #[cfg(target_os = "macos")]
 impl Network {
     pub fn private_ip4() -> String {
-        let mut command = std::process::Command::new("ipconfig");
+        let mut command = Command::new("ipconfig");
         command.args(["getifaddr", "en0"]);
 
         let output = command.stdout(Stdio::piped()).output().unwrap();
@@ -378,14 +378,14 @@ impl Network {
         return String::from("0");
     }
     pub fn public_ip4() -> String {
-        let mut command = std::process::Command::new("curl");
+        let mut command = Command::new("curl");
         command.arg("http://ifconfig.me/ip");
 
         let output = command.stdout(Stdio::piped()).output().unwrap();
         return String::from_utf8(output.stdout).unwrap();
     }
     pub fn public_ip6() -> String {
-        let mut command = std::process::Command::new("curl");
+        let mut command = Command::new("curl");
         command.arg("https://api6.ipify.org");
 
         let output = command.stdout(Stdio::piped()).output().unwrap();
