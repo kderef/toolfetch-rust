@@ -17,7 +17,7 @@ the executable will be in target/release/
 **winapi**  (dialog function)  
 
 *platform-specific:*  
-**num_cpus** [macos]
+**num_cpus** [macos] (get cpu cores)
 
 ---  
 # TODO  
