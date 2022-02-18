@@ -1,13 +1,18 @@
 [package]
-name = "iced-gui"
-version = "0.1.0"
+name = "toolfetch-rust"
+version = "1.2.0"
 edition = "2021"
+description = "a cross platform gui information fetching tool"
+repository = "https://github.com/x-kvoid-x/toolfetch-rust"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-druid = "*"
-libmath = "*"
+[target.'cfg(windows)'.dependencies]
+druid = "0.7.0"
 winapi = "*"
-[target.'cfg(macos)']
+libmath = "0.2.1"
+
+[target.'cfg(macos)'.dependencies]
+druid = "0.7.0"
+libmath = "0.2.1"
 num_cpus = "1.13.1"
