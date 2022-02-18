@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(unused_assignments)]
 
 use druid::{
     widget::{Align, Button, CrossAxisAlignment, Flex, FlexParams, Label, MainAxisAlignment},
@@ -59,26 +60,21 @@ fn dialog(title: &str, text: &str) {
         );
     }
 }
-pub fn start(window_size: druid::Size, window_title: LocalizedString<State>) {
+pub fn start(window_title: LocalizedString<State>) {
     // describe the main window
     let main_window = WindowDesc::new(build_root_widget)
-        .title(window_title)
-        .window_size(window_size);
+        .title(window_title);
 
     // create the initial app state
     let ip4_static = Network::private_ip4();
     let cpu = Hardware::cpu();
     let initial_state = State {
-        cpu: format!(
-            "{} with {} cores",
-            cpu.0,
-            cpu.1
-        ),
+        cpu: format!("{} with {} cores", cpu.0, cpu.1),
         ram: Hardware::ram(),
         ip4: (Network::private_ip4(), Network::public_ip4()),
         ip6: (Network::private_ip6(), Network::public_ip6()),
         subnet: subnet(&ip4_static.to_string()).to_string(),
-        host_os: OS::windows_version(),
+        host_os: format!("{:?}", OS::os_version()),
         username: OS::username(),
         hostname: OS::hostname(),
     };
@@ -171,7 +167,7 @@ fn build_root_widget() -> impl Widget<State> {
 fn subnet(ip4: &String) -> &'static str {
     let octet = ip4.split(".").collect::<Vec<&str>>()[0]
         .parse::<i32>()
-        .unwrap();
+        .unwrap_or(0);
     if octet <= 223 && octet >= 192 {
         return "255.255.255.0";
     }
@@ -186,12 +182,10 @@ fn subnet(ip4: &String) -> &'static str {
 }
 
 fn getenv(key: &str, default: &str) -> String {
-    let return_val: String;
     match env::var(key) {
-        Ok(val) => return_val = val,
-        Err(_e) => return_val = default.to_string(),
+        Ok(val) => return val,
+        Err(_e) => return default.to_string(),
     }
-    return return_val;
 }
 #[cfg(target_os = "windows")]
 fn output_from(args: Vec<&str>) -> String {
@@ -200,7 +194,7 @@ fn output_from(args: Vec<&str>) -> String {
     run.creation_flags(0x08000000); // do not spawn window
 
     if args.is_empty() {
-        return String::from("None")
+        return String::from("None");
     }
 
     if args.len() == 1 {
@@ -228,13 +222,8 @@ fn output_from(args: Vec<&str>) -> String {
 fn output_from(args: Vec<&str>) -> String {
     let mut run = Command::new("bash");
     run.arg("-c");
-
     if args.is_empty() {
-        return String::from("None")
-    }
-
-    if args.len() == 1 {
-        run.arg(args[0]);
+        return String::from("None");
     } else {
         for arg in args {
             run.arg(arg);
@@ -256,34 +245,45 @@ fn output_from(args: Vec<&str>) -> String {
 }
 impl OS {
     pub fn username() -> String {
-        if env::consts::OS == "windows" {
-            return getenv("USERNAME", "undefined")
-        }
-        else {
-            return getenv("USER", "undefined")
-        }
+        #[cfg(target_os = "windows")]
+        return getenv("USERNAME", "undefined");
+        #[cfg(not(target_os = "windows"))]
+        return getenv("USER", "undefined");
     }
+    #[cfg(target_os = "windows")]
     pub fn hostname() -> String {
-        if env::consts::OS == "windows" {
-            return getenv("COMPUTERNAME", "undefined")
-        }
-        else {
-            return getenv("hostname", "undefined")
-        }
+        return getenv("COMPUTERNAME", "undefined");
     }
-    pub fn windows_version() -> String {
-        if env::consts::OS != "windows" {
-            panic!("ERROR: this function is windows only, you are running {}", env::consts::OS);
-        }
+    #[cfg(not(target_os = "windows"))]
+    pub fn hostname() -> String {
+        let mut command = std::process::Command::new("hostname");
+        let output = command.stdout(Stdio::piped()).output().unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        return stdout.trim().to_string();
+    }
+    #[cfg(target_os = "windows")]
+    pub fn os_version() -> String {
         let raw = output_from(vec!["(Get-WmiObject -class Win32_OperatingSystem).Caption"]);
         return raw.trim().to_string();
+    }
+    #[cfg(target_os = "macos")]
+    pub fn os_version() -> String {
+        let mut command = std::process::Command::new("sw_vers");
+        let output = command.stdout(Stdio::piped()).output().unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        let os = stdout.split("\n").collect::<Vec<&str>>();
+        return format!(
+            "{} {} {}",
+            os[0].replace("ProductName:", "").trim().to_string(),
+            os[1].replace("ProductVersion:", "").trim().to_string(),
+            os[2].replace("BuildVersion:", "").trim().to_string()
+        );
     }
 }
 #[cfg(target_os = "windows")]
 impl Hardware {
     pub fn cpu() -> (String, i16) {
-        let cores = getenv("NUMBER_OF_PROCESSORS", "0")
-            .parse::<i16>().unwrap() / 2;
+        let cores = getenv("NUMBER_OF_PROCESSORS", "0").parse::<i16>().unwrap() / 2;
         let cpu_raw = output_from(vec!["WMIC CPU GET NAME"]);
         let cpu_def: Vec<&str> = cpu_raw.trim().split("\n").collect();
         return (cpu_def[1].to_string(), cores);
@@ -302,34 +302,37 @@ impl Hardware {
         // cores //
         let cores = num_cpus::get_physical() as i32;
         // cpu //
-        let cpu: String;
-        match cpuid::identify() {
-            Ok(info) => cpu = info.brand,
-            Err(error) => {
-                println!("CPUID error: {}", error);
-                cpu = error
-            }
-        }
-        
+        let mut cpu_r = std::process::Command::new("sysctl");
+        cpu_r.args(["-n", "machdep.cpu.brand_string"]);
+        let output = cpu_r.stdout(Stdio::piped()).output().unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
         return (
-            cpu.split("machdep.cpu.brand_string: ").collect::<Vec<&str>>()[0]
-                .to_string(), 
-            cores
-        )
+            stdout.split("\n").collect::<Vec<&str>>()[0].to_string(),
+            cores,
+        );
     }
     pub fn ram() -> i32 {
-        let args = vec![
-            "'system_profiler SPHardwareDataType | grep \"Memory:\"'"
-        ];
+        let args = vec!["system_profiler SPHardwareDataType"];
         let total_ram = output_from(args);
-        return total_ram.trim()
-            .split("Memory: ")
-            .collect::<Vec<&str>>()[1]
-            .split(" GB")
-            .collect::<Vec<&str>>()[0]
-            .parse().unwrap();
+        let mut found = false;
+        for i in total_ram.split("\n") {
+            if i.trim().starts_with("Memory:") {
+                found = true;
+                return i.trim().split("Memory: ").collect::<Vec<&str>>()[1]
+                    .replace("GB", "")
+                    .trim()
+                    .parse::<i32>()
+                    .unwrap();
+            }
+        }
+        if !found {
+            return 0;
+        } else {
+            return 0;
+        }
     }
 }
+#[cfg(target_os = "windows")]
 impl Network {
     pub fn private_ip4() -> String {
         let ip = output_from(vec![
@@ -356,7 +359,37 @@ impl Network {
         return response.trim().to_string();
     }
 }
+#[cfg(target_os = "macos")]
+impl Network {
+    pub fn private_ip4() -> String {
+        let mut command = std::process::Command::new("ipconfig");
+        command.args(["getifaddr", "en0"]);
+
+        let output = command.stdout(Stdio::piped()).output().unwrap();
+        return String::from_utf8(output.stdout).unwrap().trim().to_string();
+    }
+    pub fn private_ip6() -> String {
+        // TODO
+        return String::from("0");
+    }
+    pub fn public_ip4() -> String {
+        let mut command = std::process::Command::new("curl");
+        command.arg("http://ifconfig.me/ip");
+
+        let output = command.stdout(Stdio::piped()).output().unwrap();
+        return String::from_utf8(output.stdout).unwrap();
+    }
+    pub fn public_ip6() -> String {
+        let mut command = std::process::Command::new("curl");
+        command.arg("https://api6.ipify.org");
+
+        let output = command.stdout(Stdio::piped()).output().unwrap();
+        return String::from_utf8(output.stdout).unwrap();
+    }
+}
+
 // create a new Disk struct
+#[cfg(target_os = "windows")]
 impl Disk {
     pub fn new() -> Disk {
         let totalspace = output_from(vec!["WMIC logicaldisk get size"])
@@ -366,7 +399,6 @@ impl Disk {
             .trim()
             .parse::<i64>()
             .unwrap();
-
         let freespace = output_from(vec!["WMIC logicaldisk get freespace"])
             .split("\n")
             .collect::<Vec<&str>>()[1]
@@ -379,7 +411,11 @@ impl Disk {
         return Disk {
             capacity: round::floor(totalspace as f64 / 1073741824 as f64, 2),
             free: round::floor(freespace as f64 / 1073741824 as f64, 2),
-            used: round::floor(usedspace as f64 / 1073741824 as f64, 2)
+            used: round::floor(usedspace as f64 / 1073741824 as f64, 2),
         };
     }
+}
+#[cfg(target_os = "windows")]
+impl Disk {
+    pub fn new() -> Disk {}
 }
