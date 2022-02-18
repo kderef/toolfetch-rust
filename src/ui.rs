@@ -59,7 +59,7 @@ pub fn dialog(title: &str, text: &str) {
     let _ = Command::new("osascript")
         .args([
             "-e",
-            format!("'display dialog \"{}\" with title \"{}\"'", text, title),
+            format!("'display dialog \"{}\" with title \"{}\"'", text, title).as_str(),
         ])
         .spawn()
         .expect("couldn't launch popup dialog");
