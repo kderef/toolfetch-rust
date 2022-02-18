@@ -8,7 +8,8 @@ cargo run
 to compile:  
 ```bash
 cargo build --release
-```
+```  
+the executable will be in target/release/  
 
 # dependencies
 **druid**   (gui toolkit)  
