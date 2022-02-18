@@ -63,12 +63,14 @@ fn dialog(title: &str, text: &str) {
 pub fn start(window_title: LocalizedString<State>) {
     // describe the main window
     #[cfg(target_os = "macos")]
-    let main_window = WindowDesc::new(build_root_widget)
-        .title(window_title);
+    let main_window = WindowDesc::new(build_root_widget).title(window_title);
     #[cfg(target_os = "windows")]
     let main_window = WindowDesc::new(build_root_widget)
         .title(window_title)
-        .window_size(druid::Size{width: 450.0, height: 250.0});
+        .window_size(druid::Size {
+            width: 450.0,
+            height: 250.0,
+        });
 
     // create the initial app state
     let ip4_static = Network::private_ip4();
