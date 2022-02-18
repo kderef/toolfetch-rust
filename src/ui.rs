@@ -54,16 +54,6 @@ pub fn dialog(title: &str, text: &str) {
         );
     }
 }
-#[cfg(target_os = "macos")]
-pub fn dialog(title: &str, text: &str) {
-    let _ = Command::new("osascript")
-        .args([
-            "-e",
-            format!("'display dialog \"{}\" with title \"{}\"'", text, title).as_str(),
-        ])
-        .spawn()
-        .expect("couldn't launch popup dialog");
-}
 pub fn start(window_title: LocalizedString<State>) {
     // describe the main window
     #[cfg(target_os = "macos")]
