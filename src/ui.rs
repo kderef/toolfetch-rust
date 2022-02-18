@@ -25,12 +25,6 @@ pub struct Disk {
     pub free: f64,
     pub used: f64,
 }
-
-#[derive(Clone, Data, Lens)]
-struct _State {
-    name: String,
-}
-
 #[derive(Clone, Data, Lens)]
 pub struct State {
     cpu: String,
@@ -60,6 +54,16 @@ pub fn dialog(title: &str, text: &str) {
         );
     }
 }
+#[cfg(target_os = "macos")]
+pub fn dialog(title: &str, text: &str) {
+    let _ = Command::new("osascript")
+        .args([
+            "-e",
+            format!("'display dialog \"{}\" with title \"{}\"'", text, title),
+        ])
+        .spawn()
+        .expect("couldn't launch popup dialog");
+}
 pub fn start(window_title: LocalizedString<State>) {
     // describe the main window
     #[cfg(target_os = "macos")]
@@ -72,7 +76,6 @@ pub fn start(window_title: LocalizedString<State>) {
             height: 250.0,
         });
 
-        
     // create the initial app state
     let ip4_static = Network::private_ip4();
     let cpu = Hardware::cpu();
