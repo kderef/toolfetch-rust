@@ -1,5 +1,5 @@
 # toolfetch-rust
-roolfetch GUI in rust
+toolfetch GUI in rust
 
 build instructions:  
 ```
