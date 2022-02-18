@@ -1,20 +1,21 @@
 # toolfetch-rust
-roolfetch GUI in rust
+toolfetch GUI in rust
 
-to run:  
-```bash
-cargo run
+build instructions:  
 ```
-to compile:  
-```bash
+git clone https://github.com/x-kvoid-x/toolfetch-rust
+cd toolfetch-rust
 cargo build --release
-```  
+```
 the executable will be in target/release/  
 
 # dependencies
 **druid**   (gui toolkit)  
 **libmath** (round function)  
 **winapi**  (dialog function)  
+
+*platform-specific:*  
+**num_cpus** [macos] (get cpu cores)
 
 ---  
 # TODO  
