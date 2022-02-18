@@ -9,4 +9,5 @@ edition = "2021"
 druid = "*"
 libmath = "*"
 winapi = "*"
+[target.'cfg(macos)']
 num_cpus = "1.13.1"
