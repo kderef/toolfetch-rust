@@ -11,6 +11,7 @@ build = "build.rs"
 druid = "0.7.0"
 winapi = "0.3.9"
 libmath = "0.2.1"
+easy-http-request = "0.2.12"
 
 # macos dependencies
 [target.'cfg(unix)'.dependencies]

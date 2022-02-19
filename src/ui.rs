@@ -5,6 +5,7 @@ use druid::{
     widget::{Align, Button, CrossAxisAlignment, Flex, FlexParams, Label, MainAxisAlignment},
     AppLauncher, Data, Env, Lens, LocalizedString, Widget, WindowDesc,
 };
+use easy_http_request::DefaultHttpRequest;
 use math::round;
 use std::env;
 #[cfg(target_os = "windows")]
@@ -91,17 +92,34 @@ fn build_root_widget() -> impl Widget<State> {
     let lbl_hostname =
         Label::new(|data: &State, _env: &Env| format!("hostname: {}", data.hostname));
 
-    let lbl_cpu = Label::new(|data: &State, _env: &Env| format!("cpu: {}", data.cpu));
-    let lbl_ram = Label::new(|data: &State, _env: &Env| format!("ram: {}GB", data.ram));
-    let lbl_ip4_i = Label::new(|data: &State, _env: &Env| {
-        format!("[internal] ip4: {}/{}", data.ip4.0, data.subnet)
+    let btn_hardware = Button::new("hardware").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        let cpu = Hardware::cpu();
+        let ram = Hardware::ram();
+        let (size, free, used) = Disk::new_tup();
+
+        let msg = format!(
+            "cpu : {} with {} cores\nram : {}GB\n\ndisk:\n     size => {}GB\n     free => {}GB\n     used => {}GB",
+            cpu.0, cpu.1, ram, size, free, used
+        );
+
+        dialog("Hardware Info", msg.as_str())
     });
-    let lbl_ip6_i =
-        Label::new(|data: &State, _env: &Env| format!("[internal] ip6: {}", data.ip6.0));
-    let lbl_ip4_e =
-        Label::new(|data: &State, _env: &Env| format!("[external] ip4: {}", data.ip4.1));
-    let lbl_ip6_e =
-        Label::new(|data: &State, _env: &Env| format!("[external] ip6: {}", data.ip6.1));
+    let btn_ip_i = Button::new("internal IPs").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        let ips = (Network::private_ip4(), Network::private_ip6());
+
+        dialog(
+            "Internal IPs",
+            format!("ip4 => {}/{}\nip6 => {}", ips.0, subnet(&ips.0), ips.1).as_str(),
+        );
+    });
+    let btn_ip_e = Button::new("external IPs").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        let ips = (Network::public_ip4(), Network::public_ip6());
+
+        dialog(
+            "External IPs",
+            format!("ip4 => {}\nip6 => {}", ips.0, ips.1).as_str(),
+        );
+    });
 
     let btn_programs =
         Button::new("install/remove programs").on_click(|_ctx, _data: &mut State, _env: &Env| {
@@ -138,22 +156,26 @@ fn build_root_widget() -> impl Widget<State> {
         .with_child(lbl_username)
         .with_child(lbl_hostname)
         .with_flex_spacer(0.3)
-        .with_child(lbl_cpu)
-        .with_child(lbl_ram)
-        .with_child(lbl_ip4_i)
-        .with_child(lbl_ip6_i)
-        .with_child(lbl_ip4_e)
-        .with_child(lbl_ip6_e)
+        .with_child(
+            Flex::row()
+                .cross_axis_alignment(CrossAxisAlignment::Start)
+                .with_child(btn_ip_i)
+                .with_child(btn_ip_e)
+                .with_child(btn_hardware),
+        )
         .with_flex_spacer(0.3)
         .with_flex_child(
             btn_programs,
             FlexParams::new(1.0, CrossAxisAlignment::Center),
         )
+        .with_flex_spacer(0.1)
         .with_flex_child(
             btn_network,
             FlexParams::new(1.0, CrossAxisAlignment::Center),
         )
+        .with_flex_spacer(0.1)
         .with_flex_child(btn_admin, FlexParams::new(1.0, CrossAxisAlignment::Center))
+        .with_flex_spacer(0.1)
         .with_flex_child(
             btn_features,
             FlexParams::new(1.0, CrossAxisAlignment::Center),
@@ -181,7 +203,14 @@ fn subnet(ip4: &String) -> &'static str {
         return "0.0.0.0";
     }
 }
-
+#[cfg(target_os = "windows")]
+pub fn get(url: &str) -> String {
+    let response = DefaultHttpRequest::get_from_url_str(url)
+        .unwrap()
+        .send()
+        .unwrap();
+    return String::from_utf8(response.body).unwrap();
+}
 fn getenv(key: &str, default: &str) -> String {
     match env::var(key) {
         Ok(val) => return val,
@@ -348,16 +377,10 @@ impl Network {
         return ip.trim().to_string();
     }
     pub fn public_ip4() -> String {
-        let response = output_from(vec![
-            "(Invoke-WebRequest -uri http://ifconfig.me/ip).Content",
-        ]);
-        return response.trim().to_string();
+        get("http://ifconfig.me/ip")
     }
     pub fn public_ip6() -> String {
-        let response = output_from(vec![
-            "(Invoke-WebRequest -uri https://api6.ipify.org).Content",
-        ]);
-        return response.trim().to_string();
+        get("https://api6.ipify.org")
     }
 }
 #[cfg(target_os = "macos")]
@@ -414,5 +437,27 @@ impl Disk {
             free: round::floor(freespace as f64 / 1073741824 as f64, 2),
             used: round::floor(usedspace as f64 / 1073741824 as f64, 2),
         };
+    }
+    pub fn new_tup() -> (f64, f64, f64) {
+        let totalspace = output_from(vec!["WMIC logicaldisk get size"])
+            .split("\n")
+            .collect::<Vec<&str>>()[1]
+            .to_string()
+            .trim()
+            .parse::<i64>()
+            .unwrap();
+        let freespace = output_from(vec!["WMIC logicaldisk get freespace"])
+            .split("\n")
+            .collect::<Vec<&str>>()[1]
+            .to_string()
+            .trim()
+            .parse::<i64>()
+            .unwrap();
+        let usedspace: i64 = totalspace - freespace;
+        return (
+            round::floor(totalspace as f64 / 1073741824 as f64, 2),
+            round::floor(freespace as f64 / 1073741824 as f64, 2),
+            round::floor(usedspace as f64 / 1073741824 as f64, 2),
+        );
     }
 }
