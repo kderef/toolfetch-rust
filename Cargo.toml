@@ -1,6 +1,6 @@
 [package]
 name = "toolfetch-rust"
-version = "1.3.1"
+version = "1.4"
 edition = "2021"
 description = "a cross platform gui information fetching tool"
 repository = "https://github.com/x-kvoid-x/toolfetch-rust"
