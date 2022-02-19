@@ -47,7 +47,7 @@ impl Default for State {
             subnet: String::new(),
             hostname: OS::hostname(),
             username: OS::username(),
-            host_os: String::new()
+            host_os: String::new(),
         }
     }
 }
@@ -93,7 +93,14 @@ fn build_root_widget() -> impl Widget<State> {
     let lbl_username =
         Label::new(|data: &State, _env: &Env| format!("username: {}", data.username));
     let lbl_hostname =
-        Label::new(|data: &State, _env: &Env| format!("hostname: {}", data.hostname));
+        Label::new(|data: &State, _env: &Env| format!("computername: {}", data.hostname));
+        //control desk.cpl
+    let btn_display = Button::new("display properties").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        Command::new("control.exe")
+            .arg("desk.cpl")
+            .spawn()
+            .expect("couldn't start control.exe desk.cpl");
+    });
 
     let btn_hardware = Button::new("hardware").on_click(|_ctx, _data: &mut State, _env: &Env| {
         let cpu = Hardware::cpu();
@@ -101,7 +108,7 @@ fn build_root_widget() -> impl Widget<State> {
         let (size, free, used) = Disk::new_tup();
 
         let msg = format!(
-            "cpu : {} with {} cores\nram : {}GB\n\ndisk:\n     size => {}GB\n     free => {}GB\n     used => {}GB",
+            "cpu : {}\ncpu cores : {}\nram : {}GB\n\ndisk:\n     size => {}GB\n     free => {}GB\n     used => {}GB",
             cpu.0, cpu.1, ram, size, free, used
         );
 
@@ -109,10 +116,18 @@ fn build_root_widget() -> impl Widget<State> {
     });
     let btn_ip_i = Button::new("internal IPs").on_click(|_ctx, _data: &mut State, _env: &Env| {
         let ips = (Network::private_ip4(), Network::private_ip6());
+        let gateway = output_from(vec!["(Get-NetRoute \"0.0.0.0/0\").NextHop"]);
 
         dialog(
             "Internal IPs",
-            format!("ip4 => {}/{}\nip6 => {}", ips.0, subnet(&ips.0), ips.1).as_str(),
+            format!(
+                "IPv4\t\t{}\nsubnet mask\t{}\ndefault gateway\t{}\nIPv6\t\t{}",
+                ips.0,
+                subnet(&ips.0),
+                gateway.trim(),
+                ips.1
+            )
+            .as_str(),
         );
     });
     let btn_ip_e = Button::new("external IPs").on_click(|_ctx, _data: &mut State, _env: &Env| {
@@ -120,35 +135,59 @@ fn build_root_widget() -> impl Widget<State> {
 
         dialog(
             "External IPs",
-            format!("ip4 => {}\nip6 => {}", ips.0, ips.1).as_str(),
+            format!("IPv4\t{}\nIPv6\t{}", ips.0, ips.1).as_str(),
         );
     });
-
+    let btn_task = Button::new("task manager").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        Command::new("cmd.exe")
+            .args(["/c", "start", "taskmgr"])
+            .spawn()
+            .expect("couldn't start task manager");
+    });
+    let btn_control =
+        Button::new("control panel").on_click(|_ctr, _data: &mut State, _env: &Env| {
+            Command::new("control.exe")
+                .spawn()
+                .expect("couldn't start control.exe");
+        });
+    let btn_printers =
+        Button::new("devices & printers").on_click(|_ctr, _data: &mut State, _env: &Env| {
+            Command::new("control.exe")
+                .arg("printers")
+                .spawn()
+                .expect("couldn't run control.exe printers");
+        });
+    let btn_cmd = Button::new("command prompt").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        Command::new("cmd.exe")
+            .args(["/c", "start"])
+            .spawn()
+            .expect("cmd.exe failed to run");
+    });
     let btn_programs =
         Button::new("install/remove programs").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            let _ = Command::new("control.exe")
+            Command::new("control.exe")
                 .arg("appwiz.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
         });
     let btn_network =
         Button::new("network connections").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            let _ = Command::new("control.exe")
+            Command::new("control.exe")
                 .arg("ncpa.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
         });
     let btn_admin = Button::new("admin tools").on_click(|_ctx, _data: &mut State, _env: &Env| {
-        let _ = Command::new("control.exe")
+        Command::new("control.exe")
             .args(["/name", "Microsoft.AdministrativeTools"])
             .spawn()
             .expect("failed to run control.exe");
     });
+
     let btn_features =
         Button::new("windows features").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            let _ = Command::new("rundll32.exe")
-                .arg("shell32.dll,Control_RunDLL")
-                .arg("appwiz.cpl,,2")
+            Command::new("rundll32.exe")
+                .args(["shell32.dll,Control_RunDLL", "appwiz.cpl,,2"])
                 .spawn()
                 .expect("failed to run control.exe");
         });
@@ -168,12 +207,28 @@ fn build_root_widget() -> impl Widget<State> {
         )
         .with_flex_spacer(0.3)
         .with_flex_child(
-            btn_programs,
+            btn_control,
             FlexParams::new(1.0, CrossAxisAlignment::Center),
         )
         .with_flex_spacer(0.1)
         .with_flex_child(
             btn_network,
+            FlexParams::new(1.0, CrossAxisAlignment::Center),
+        )
+        .with_flex_spacer(0.1)
+        .with_flex_child(
+            btn_programs,
+            FlexParams::new(1.0, CrossAxisAlignment::Center),
+        )
+        .with_flex_spacer(0.1)
+        .with_flex_child(btn_display, FlexParams::new(1.0, CrossAxisAlignment::Center))
+        .with_flex_spacer(0.1)
+        .with_flex_child(btn_cmd, FlexParams::new(1.0, CrossAxisAlignment::Center))
+        .with_flex_spacer(0.1)
+        .with_flex_child(btn_task, FlexParams::new(1.0, CrossAxisAlignment::Center))
+        .with_flex_spacer(0.1)
+        .with_flex_child(
+            btn_printers,
             FlexParams::new(1.0, CrossAxisAlignment::Center),
         )
         .with_flex_spacer(0.1)
