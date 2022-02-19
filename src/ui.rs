@@ -37,6 +37,20 @@ pub struct State {
     username: String,
     host_os: String,
 }
+impl Default for State {
+    fn default() -> State {
+        State {
+            cpu: String::new(),
+            ram: 0,
+            ip4: (String::new(), String::new()),
+            ip6: (String::new(), String::new()),
+            subnet: String::new(),
+            hostname: OS::hostname(),
+            username: OS::username(),
+            host_os: String::new()
+        }
+    }
+}
 #[cfg(target_os = "windows")]
 pub fn dialog(title: &str, text: &str) {
     let mut message_n = text.to_string();
@@ -68,18 +82,7 @@ pub fn start(window_title: LocalizedString<State>) {
         });
 
     // create the initial app state
-    let ip4_static = Network::private_ip4();
-    let cpu = Hardware::cpu();
-    let initial_state = State {
-        cpu: format!("{} with {} cores", cpu.0, cpu.1),
-        ram: Hardware::ram(),
-        ip4: (Network::private_ip4(), Network::public_ip4()),
-        ip6: (Network::private_ip6(), Network::public_ip6()),
-        subnet: subnet(&ip4_static.to_string()).to_string(),
-        host_os: format!("{:?}", OS::os_version()),
-        username: OS::username(),
-        hostname: OS::hostname(),
-    };
+    let initial_state = State::default();
 
     // start the application
     AppLauncher::with_window(main_window)
