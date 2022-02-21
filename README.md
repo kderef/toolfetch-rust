@@ -19,5 +19,7 @@ the executable will be in target/release/
 
 ---  
 # TODO  
-* add *disk info* segment to UI  
-* linux/mac support
+- [x] *disk info* segment to UI  
+- [x] linux/mac support
+- [ ] light theme
+- [ ] add taskbar icon
