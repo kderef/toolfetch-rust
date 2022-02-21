@@ -91,13 +91,12 @@ pub fn start(window_title: LocalizedString<State>) {
 }
 fn build_root_widget() -> impl Widget<State> {
     let lbl_username =
-        Label::new(|data: &State, _env: &Env| format!("username: {}", data.username));
+        Label::new(|data: &State, _env: &Env| format!("gebruikersnaam: {}", data.username));
     let lbl_hostname =
-        Label::new(|data: &State, _env: &Env| format!("computername: {}", data.hostname));
+        Label::new(|data: &State, _env: &Env| format!("computernaam: {}", data.hostname));
         //control desk.cpl
-    let btn_display = Button::new("display properties").on_click(|_ctx, _data: &mut State, _env: &Env| {
-        Command::new("control.exe")
-            .arg("desk.cpl")
+    let btn_display = Button::new("scherm eigenschappen").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        Command::new("desk.cpl")
             .spawn()
             .expect("couldn't start control.exe desk.cpl");
     });
@@ -108,20 +107,20 @@ fn build_root_widget() -> impl Widget<State> {
         let (size, free, used) = Disk::new_tup();
 
         let msg = format!(
-            "cpu : {}\ncpu cores : {}\nram : {}GB\n\ndisk:\n     size => {}GB\n     free => {}GB\n     used => {}GB",
-            cpu.0, cpu.1, ram, size, free, used
+            "cpu : {}\ncpu cores : {}\nram : {}GB\n\nharde schijf:\ncapaciteit => {}\ngebruikt => {} / {}GB\nvrij => {}GB",
+            cpu.0, cpu.1, ram, size, used, size, free
         );
 
         dialog("Hardware Info", msg.as_str())
     });
-    let btn_ip_i = Button::new("internal IPs").on_click(|_ctx, _data: &mut State, _env: &Env| {
+    let btn_ip_i = Button::new("interne IPs").on_click(|_ctx, _data: &mut State, _env: &Env| {
         let ips = (Network::private_ip4(), Network::private_ip6());
         let gateway = output_from(vec!["(Get-NetRoute \"0.0.0.0/0\").NextHop"]);
 
         dialog(
             "Internal IPs",
             format!(
-                "IPv4\t\t{}\nsubnet mask\t{}\ndefault gateway\t{}\nIPv6\t\t{}",
+                "IPv4\t\t{}\nsubnet mask\t{}\ndefault gateway\t{}\n\nIPv6\t\t{}",
                 ips.0,
                 subnet(&ips.0),
                 gateway.trim(),
@@ -130,34 +129,34 @@ fn build_root_widget() -> impl Widget<State> {
             .as_str(),
         );
     });
-    let btn_ip_e = Button::new("external IPs").on_click(|_ctx, _data: &mut State, _env: &Env| {
+    let btn_ip_e = Button::new("externe IPs").on_click(|_ctx, _data: &mut State, _env: &Env| {
         let ips = (Network::public_ip4(), Network::public_ip6());
 
         dialog(
-            "External IPs",
+            "Externe IPs",
             format!("IPv4\t{}\nIPv6\t{}", ips.0, ips.1).as_str(),
         );
     });
-    let btn_task = Button::new("task manager").on_click(|_ctx, _data: &mut State, _env: &Env| {
+    let btn_task = Button::new("taakbeheer").on_click(|_ctx, _data: &mut State, _env: &Env| {
         Command::new("cmd.exe")
             .args(["/c", "start", "taskmgr"])
             .spawn()
             .expect("couldn't start task manager");
     });
     let btn_control =
-        Button::new("control panel").on_click(|_ctr, _data: &mut State, _env: &Env| {
+        Button::new("configuratiescherm").on_click(|_ctr, _data: &mut State, _env: &Env| {
             Command::new("control.exe")
                 .spawn()
                 .expect("couldn't start control.exe");
         });
     let btn_printers =
-        Button::new("devices & printers").on_click(|_ctr, _data: &mut State, _env: &Env| {
+        Button::new("apparaten & printers").on_click(|_ctr, _data: &mut State, _env: &Env| {
             Command::new("control.exe")
                 .arg("printers")
                 .spawn()
                 .expect("couldn't run control.exe printers");
         });
-    let btn_cmd = Button::new("command prompt").on_click(|_ctx, _data: &mut State, _env: &Env| {
+    let btn_cmd = Button::new("opdrachtprompt").on_click(|_ctx, _data: &mut State, _env: &Env| {
         Command::new("cmd.exe")
             .args(["/c", "start"])
             .spawn()
@@ -165,15 +164,13 @@ fn build_root_widget() -> impl Widget<State> {
     });
     let btn_programs =
         Button::new("install/remove programs").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            Command::new("control.exe")
-                .arg("appwiz.cpl")
+            Command::new("appwiz.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
         });
     let btn_network =
         Button::new("network connections").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            Command::new("control.exe")
-                .arg("ncpa.cpl")
+            Command::new("ncpa.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
         });

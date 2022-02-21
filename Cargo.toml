@@ -1,7 +1,8 @@
 [package]
 name = "toolfetch-rust"
-version = "1.4"
+version = "1.4.1"
 edition = "2021"
+authors = ["Kian [kiantd@gmail.com]"]
 description = "a cross platform gui information fetching tool"
 repository = "https://github.com/x-kvoid-x/toolfetch-rust"
 build = "build.rs"
