@@ -10,12 +10,12 @@ cargo build --release
 the executable will be in target/release/  
 
 # dependencies
-**druid**              ==> gui toolkit                  (all platforms)
-**winapi**             ==> dialog box for windows       (windows only)
-**libmath**            ==> round function for disk size (all platforms)
-**easy-http-request**  ==> GET requests                 (windows only)
-**num_cpus**           ==> get cpu cores                (unix only)
-**winres**             ==> add icon to exe              (windows only)
+**druid**              ==> gui toolkit                  (all platforms)  
+**winapi**             ==> dialog box for windows       (windows only)  
+**libmath**            ==> round function for disk size (all platforms)  
+**easy-http-request**  ==> GET requests                 (windows only)  
+**num_cpus**           ==> get cpu cores                (unix only)  
+**winres**             ==> add icon to exe              (windows only)  
 
 ---  
 # TODO  
