@@ -96,7 +96,8 @@ fn build_root_widget() -> impl Widget<State> {
     //control desk.cpl
     let btn_display =
         Button::new("scherm eigenschappen").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            Command::new("desk.cpl")
+            Command::new("control.exe")
+                .arg("desk.cpl")
                 .spawn()
                 .expect("couldn't start control.exe desk.cpl");
         });
@@ -164,14 +165,16 @@ fn build_root_widget() -> impl Widget<State> {
             .expect("cmd.exe failed to run");
     });
     let btn_programs =
-        Button::new("install/remove programs").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            Command::new("appwiz.cpl")
+        Button::new("installeer/verwijder programmas").on_click(|_ctx, _data: &mut State, _env: &Env| {
+            Command::new("control.exe")
+                .arg("appwiz.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
         });
     let btn_network =
         Button::new("network connections").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            Command::new("ncpa.cpl")
+            Command::new("control.exe")
+                .arg("ncpa.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
         });
