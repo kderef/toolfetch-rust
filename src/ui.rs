@@ -69,6 +69,10 @@ pub fn dialog(title: &str, text: &str) {
         );
     }
 }
+#[cfg(not(target_os = "windows"))]
+pub fn dialog(title: &str, text: &str) {
+    panic!("function dialog() is Windows Only");
+}
 pub fn start(window_title: LocalizedString<State>) {
     #[cfg(target_os = "macos")]
     let main_window = WindowDesc::new(build_root_widget).title(window_title);
@@ -80,10 +84,8 @@ pub fn start(window_title: LocalizedString<State>) {
             height: 250.0,
         });
 
-    // create the initial app state
-    let initial_state = State::default();
+    let initial_state = State::default(); // empty state
 
-    // start the application
     AppLauncher::with_window(main_window)
         .launch(initial_state)
         .expect("Failed to launch application");
