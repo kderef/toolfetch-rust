@@ -164,13 +164,14 @@ fn build_root_widget() -> impl Widget<State> {
             .spawn()
             .expect("cmd.exe failed to run");
     });
-    let btn_programs =
-        Button::new("installeer/verwijder programmas").on_click(|_ctx, _data: &mut State, _env: &Env| {
+    let btn_programs = Button::new("installeer/verwijder programmas").on_click(
+        |_ctx, _data: &mut State, _env: &Env| {
             Command::new("control.exe")
                 .arg("appwiz.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
-        });
+        },
+    );
     let btn_network =
         Button::new("network connections").on_click(|_ctx, _data: &mut State, _env: &Env| {
             Command::new("control.exe")
@@ -304,10 +305,7 @@ fn output_from(args: Vec<&str>) -> String {
         }
     }
 
-    let output = run
-        .stdout(Stdio::piped())
-        .output()
-        .unwrap();
+    let output = run.stdout(Stdio::piped()).output().unwrap();
 
     let stdout = String::from_utf8(output.stdout).unwrap();
 
