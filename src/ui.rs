@@ -260,11 +260,17 @@ fn subnet(ip4: &String) -> &'static str {
 }
 #[cfg(target_os = "windows")]
 pub fn get(url: &str) -> String {
-    let response = DefaultHttpRequest::get_from_url_str(url)
-        .unwrap()
-        .send()
-        .unwrap();
-    return String::from_utf8(response.body).unwrap();
+    match DefaultHttpRequest::get_from_url_str(url) {
+            Ok(val) => {
+                let response = val.send().unwrap();
+                String::from_utf8(response.body).unwrap()
+            }
+            Err(_e) => {
+                let cmd = format!("(Invoke-WebRequest -uri {}).Content", url);
+                let response = output_from(vec![cmd.as_str()]);
+                response
+            }
+        }
 }
 fn getenv(key: &str, default: &str) -> String {
     match env::var(key) {
