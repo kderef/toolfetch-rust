@@ -1,6 +1,6 @@
 [package]
 name = "toolfetch-rust"
-version = "1.4.1"
+version = "1.4.2"
 edition = "2021"
 authors = ["Kian [kiantd@gmail.com]"]
 description = "a cross platform gui information fetching tool"
