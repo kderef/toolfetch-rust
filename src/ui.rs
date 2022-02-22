@@ -70,7 +70,6 @@ pub fn dialog(title: &str, text: &str) {
     }
 }
 pub fn start(window_title: LocalizedString<State>) {
-    // describe the main window
     #[cfg(target_os = "macos")]
     let main_window = WindowDesc::new(build_root_widget).title(window_title);
     #[cfg(target_os = "windows")]
@@ -94,12 +93,13 @@ fn build_root_widget() -> impl Widget<State> {
         Label::new(|data: &State, _env: &Env| format!("gebruikersnaam: {}", data.username));
     let lbl_hostname =
         Label::new(|data: &State, _env: &Env| format!("computernaam: {}", data.hostname));
-        //control desk.cpl
-    let btn_display = Button::new("scherm eigenschappen").on_click(|_ctx, _data: &mut State, _env: &Env| {
-        Command::new("desk.cpl")
-            .spawn()
-            .expect("couldn't start control.exe desk.cpl");
-    });
+    //control desk.cpl
+    let btn_display =
+        Button::new("scherm eigenschappen").on_click(|_ctx, _data: &mut State, _env: &Env| {
+            Command::new("desk.cpl")
+                .spawn()
+                .expect("couldn't start control.exe desk.cpl");
+        });
 
     let btn_hardware = Button::new("hardware").on_click(|_ctx, _data: &mut State, _env: &Env| {
         let cpu = Hardware::cpu();
@@ -139,6 +139,7 @@ fn build_root_widget() -> impl Widget<State> {
     });
     let btn_task = Button::new("taakbeheer").on_click(|_ctx, _data: &mut State, _env: &Env| {
         Command::new("cmd.exe")
+            .creation_flags(0x08000000)
             .args(["/c", "start", "taskmgr"])
             .spawn()
             .expect("couldn't start task manager");
@@ -218,7 +219,10 @@ fn build_root_widget() -> impl Widget<State> {
             FlexParams::new(1.0, CrossAxisAlignment::Center),
         )
         .with_flex_spacer(0.1)
-        .with_flex_child(btn_display, FlexParams::new(1.0, CrossAxisAlignment::Center))
+        .with_flex_child(
+            btn_display,
+            FlexParams::new(1.0, CrossAxisAlignment::Center),
+        )
         .with_flex_spacer(0.1)
         .with_flex_child(btn_cmd, FlexParams::new(1.0, CrossAxisAlignment::Center))
         .with_flex_spacer(0.1)
@@ -261,16 +265,17 @@ fn subnet(ip4: &String) -> &'static str {
 #[cfg(target_os = "windows")]
 pub fn get(url: &str) -> String {
     match DefaultHttpRequest::get_from_url_str(url) {
-            Ok(val) => {
-                let response = val.send().unwrap();
-                String::from_utf8(response.body).unwrap()
-            }
-            Err(_e) => {
-                let cmd = format!("(Invoke-WebRequest -uri {}).Content", url);
-                let response = output_from(vec![cmd.as_str()]);
-                response
-            }
+        Ok(val) => {
+            let response = val.send().unwrap();
+            String::from_utf8(response.body).unwrap()
         }
+        Err(_e) => {
+            // if error, use powershell as backup
+            let cmd = format!("(Invoke-WebRequest -uri {}).Content", url);
+            let response = output_from(vec![cmd.as_str()]);
+            response
+        }
+    }
 }
 fn getenv(key: &str, default: &str) -> String {
     match env::var(key) {
@@ -297,14 +302,10 @@ fn output_from(args: Vec<&str>) -> String {
     }
 
     let output = run
-        // record output
         .stdout(Stdio::piped())
-        // execute the command, wait for it to complete, then capture the output
         .output()
-        // Blow up if the OS was unable to start the program
         .unwrap();
 
-    // extract the raw bytes that we captured and interpret them as a string
     let stdout = String::from_utf8(output.stdout).unwrap();
 
     return stdout;
@@ -337,13 +338,13 @@ fn output_from(args: Vec<&str>) -> String {
 impl OS {
     pub fn username() -> String {
         #[cfg(target_os = "windows")]
-        return getenv("USERNAME", "undefined");
+        return getenv("USERNAME", "onbekend");
         #[cfg(not(target_os = "windows"))]
-        return getenv("USER", "undefined");
+        return getenv("USER", "onbekend");
     }
     #[cfg(target_os = "windows")]
     pub fn hostname() -> String {
-        return getenv("COMPUTERNAME", "undefined");
+        return getenv("COMPUTERNAME", "onbekend");
     }
     #[cfg(not(target_os = "windows"))]
     pub fn hostname() -> String {
@@ -405,10 +406,8 @@ impl Hardware {
     pub fn ram() -> i32 {
         let args = vec!["system_profiler SPHardwareDataType"];
         let total_ram = output_from(args);
-        let mut found = false;
         for i in total_ram.split("\n") {
             if i.trim().starts_with("Memory:") {
-                found = true;
                 return i.trim().split("Memory: ").collect::<Vec<&str>>()[1]
                     .replace("GB", "")
                     .trim()
@@ -416,11 +415,7 @@ impl Hardware {
                     .unwrap();
             }
         }
-        if !found {
-            return 0;
-        } else {
-            return 0;
-        }
+        return 0;
     }
 }
 #[cfg(target_os = "windows")]
