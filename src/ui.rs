@@ -5,6 +5,7 @@ use druid::{
     widget::{Align, Button, CrossAxisAlignment, Flex, FlexParams, Label, MainAxisAlignment},
     AppLauncher, Data, Env, Lens, LocalizedString, Widget, WindowDesc,
 };
+use easy_http_request::DefaultHttpRequest;
 use math::round;
 use std::env;
 #[cfg(target_os = "windows")]
@@ -36,6 +37,20 @@ pub struct State {
     username: String,
     host_os: String,
 }
+impl Default for State {
+    fn default() -> State {
+        State {
+            cpu: String::new(),
+            ram: 0,
+            ip4: (String::new(), String::new()),
+            ip6: (String::new(), String::new()),
+            subnet: String::new(),
+            hostname: OS::hostname(),
+            username: OS::username(),
+            host_os: String::new(),
+        }
+    }
+}
 #[cfg(target_os = "windows")]
 pub fn dialog(title: &str, text: &str) {
     let mut message_n = text.to_string();
@@ -54,8 +69,11 @@ pub fn dialog(title: &str, text: &str) {
         );
     }
 }
+#[cfg(not(target_os = "windows"))]
+pub fn dialog(title: &str, text: &str) {
+    panic!("function dialog() is Windows Only");
+}
 pub fn start(window_title: LocalizedString<State>) {
-    // describe the main window
     #[cfg(target_os = "macos")]
     let main_window = WindowDesc::new(build_root_widget).title(window_title);
     #[cfg(target_os = "windows")]
@@ -66,68 +84,114 @@ pub fn start(window_title: LocalizedString<State>) {
             height: 250.0,
         });
 
-    // create the initial app state
-    let ip4_static = Network::private_ip4();
-    let cpu = Hardware::cpu();
-    let initial_state = State {
-        cpu: format!("{} with {} cores", cpu.0, cpu.1),
-        ram: Hardware::ram(),
-        ip4: (Network::private_ip4(), Network::public_ip4()),
-        ip6: (Network::private_ip6(), Network::public_ip6()),
-        subnet: subnet(&ip4_static.to_string()).to_string(),
-        host_os: format!("{:?}", OS::os_version()),
-        username: OS::username(),
-        hostname: OS::hostname(),
-    };
+    let initial_state = State::default(); // empty state
 
-    // start the application
     AppLauncher::with_window(main_window)
         .launch(initial_state)
         .expect("Failed to launch application");
 }
 fn build_root_widget() -> impl Widget<State> {
     let lbl_username =
-        Label::new(|data: &State, _env: &Env| format!("username: {}", data.username));
+        Label::new(|data: &State, _env: &Env| format!("gebruikersnaam: {}", data.username));
     let lbl_hostname =
-        Label::new(|data: &State, _env: &Env| format!("hostname: {}", data.hostname));
+        Label::new(|data: &State, _env: &Env| format!("computernaam: {}", data.hostname));
+    //control desk.cpl
+    let btn_display =
+        Button::new("scherm eigenschappen").on_click(|_ctx, _data: &mut State, _env: &Env| {
+            Command::new("control.exe")
+                .arg("desk.cpl")
+                .spawn()
+                .expect("couldn't start control.exe desk.cpl");
+        });
 
-    let lbl_cpu = Label::new(|data: &State, _env: &Env| format!("cpu: {}", data.cpu));
-    let lbl_ram = Label::new(|data: &State, _env: &Env| format!("ram: {}GB", data.ram));
-    let lbl_ip4_i = Label::new(|data: &State, _env: &Env| {
-        format!("[internal] ip4: {}/{}", data.ip4.0, data.subnet)
+    let btn_hardware = Button::new("hardware").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        let cpu = Hardware::cpu();
+        let ram = Hardware::ram();
+        let (size, free, used) = Disk::new_tup();
+
+        let msg = format!(
+            "cpu : {}\ncpu cores : {}\nram : {}GB\n\nharde schijf:\ncapaciteit => {}\ngebruikt => {} / {}GB\nvrij => {}GB",
+            cpu.0, cpu.1, ram, size, used, size, free
+        );
+
+        dialog("Hardware Info", msg.as_str())
     });
-    let lbl_ip6_i =
-        Label::new(|data: &State, _env: &Env| format!("[internal] ip6: {}", data.ip6.0));
-    let lbl_ip4_e =
-        Label::new(|data: &State, _env: &Env| format!("[external] ip4: {}", data.ip4.1));
-    let lbl_ip6_e =
-        Label::new(|data: &State, _env: &Env| format!("[external] ip6: {}", data.ip6.1));
+    let btn_ip_i = Button::new("interne IPs").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        let ips = (Network::private_ip4(), Network::private_ip6());
+        let gateway = output_from(vec!["(Get-NetRoute \"0.0.0.0/0\").NextHop"]);
 
-    let btn_programs =
-        Button::new("install/remove programs").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            let _ = Command::new("control.exe")
+        dialog(
+            "Internal IPs",
+            format!(
+                "IPv4\t\t{}\nsubnet mask\t{}\ndefault gateway\t{}\n\nIPv6\t\t{}",
+                ips.0,
+                subnet(&ips.0),
+                gateway.trim(),
+                ips.1
+            )
+            .as_str(),
+        );
+    });
+    let btn_ip_e = Button::new("externe IPs").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        let ips = (Network::public_ip4(), Network::public_ip6());
+
+        dialog(
+            "Externe IPs",
+            format!("IPv4\t{}\nIPv6\t{}", ips.0, ips.1).as_str(),
+        );
+    });
+    let btn_task = Button::new("taakbeheer").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        Command::new("cmd.exe")
+            .creation_flags(0x08000000)
+            .args(["/c", "start", "taskmgr"])
+            .spawn()
+            .expect("couldn't start task manager");
+    });
+    let btn_control =
+        Button::new("configuratiescherm").on_click(|_ctr, _data: &mut State, _env: &Env| {
+            Command::new("control.exe")
+                .spawn()
+                .expect("couldn't start control.exe");
+        });
+    let btn_printers =
+        Button::new("apparaten & printers").on_click(|_ctr, _data: &mut State, _env: &Env| {
+            Command::new("control.exe")
+                .arg("printers")
+                .spawn()
+                .expect("couldn't run control.exe printers");
+        });
+    let btn_cmd = Button::new("opdrachtprompt").on_click(|_ctx, _data: &mut State, _env: &Env| {
+        Command::new("cmd.exe")
+            .args(["/c", "start"])
+            .spawn()
+            .expect("cmd.exe failed to run");
+    });
+    let btn_programs = Button::new("installeer/verwijder programmas").on_click(
+        |_ctx, _data: &mut State, _env: &Env| {
+            Command::new("control.exe")
                 .arg("appwiz.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
-        });
+        },
+    );
     let btn_network =
         Button::new("network connections").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            let _ = Command::new("control.exe")
+            Command::new("control.exe")
                 .arg("ncpa.cpl")
                 .spawn()
                 .expect("failed to run control.exe");
         });
     let btn_admin = Button::new("admin tools").on_click(|_ctx, _data: &mut State, _env: &Env| {
-        let _ = Command::new("control.exe")
+        Command::new("control.exe")
             .args(["/name", "Microsoft.AdministrativeTools"])
             .spawn()
             .expect("failed to run control.exe");
     });
+
     let btn_features =
         Button::new("windows features").on_click(|_ctx, _data: &mut State, _env: &Env| {
-            let _ = Command::new("rundll32.exe")
-                .arg("shell32.dll,Control_RunDLL")
-                .arg("appwiz.cpl,,2")
+            Command::new("rundll32.exe")
+                .args(["shell32.dll,Control_RunDLL", "appwiz.cpl,,2"])
                 .spawn()
                 .expect("failed to run control.exe");
         });
@@ -138,22 +202,45 @@ fn build_root_widget() -> impl Widget<State> {
         .with_child(lbl_username)
         .with_child(lbl_hostname)
         .with_flex_spacer(0.3)
-        .with_child(lbl_cpu)
-        .with_child(lbl_ram)
-        .with_child(lbl_ip4_i)
-        .with_child(lbl_ip6_i)
-        .with_child(lbl_ip4_e)
-        .with_child(lbl_ip6_e)
+        .with_child(
+            Flex::row()
+                .cross_axis_alignment(CrossAxisAlignment::Start)
+                .with_child(btn_ip_i)
+                .with_child(btn_ip_e)
+                .with_child(btn_hardware),
+        )
         .with_flex_spacer(0.3)
         .with_flex_child(
-            btn_programs,
+            btn_control,
             FlexParams::new(1.0, CrossAxisAlignment::Center),
         )
+        .with_flex_spacer(0.1)
         .with_flex_child(
             btn_network,
             FlexParams::new(1.0, CrossAxisAlignment::Center),
         )
+        .with_flex_spacer(0.1)
+        .with_flex_child(
+            btn_programs,
+            FlexParams::new(1.0, CrossAxisAlignment::Center),
+        )
+        .with_flex_spacer(0.1)
+        .with_flex_child(
+            btn_display,
+            FlexParams::new(1.0, CrossAxisAlignment::Center),
+        )
+        .with_flex_spacer(0.1)
+        .with_flex_child(btn_cmd, FlexParams::new(1.0, CrossAxisAlignment::Center))
+        .with_flex_spacer(0.1)
+        .with_flex_child(btn_task, FlexParams::new(1.0, CrossAxisAlignment::Center))
+        .with_flex_spacer(0.1)
+        .with_flex_child(
+            btn_printers,
+            FlexParams::new(1.0, CrossAxisAlignment::Center),
+        )
+        .with_flex_spacer(0.1)
         .with_flex_child(btn_admin, FlexParams::new(1.0, CrossAxisAlignment::Center))
+        .with_flex_spacer(0.1)
         .with_flex_child(
             btn_features,
             FlexParams::new(1.0, CrossAxisAlignment::Center),
@@ -181,7 +268,21 @@ fn subnet(ip4: &String) -> &'static str {
         return "0.0.0.0";
     }
 }
-
+#[cfg(target_os = "windows")]
+pub fn get(url: &str) -> String {
+    match DefaultHttpRequest::get_from_url_str(url) {
+        Ok(val) => {
+            let response = val.send().unwrap();
+            String::from_utf8(response.body).unwrap()
+        }
+        Err(_e) => {
+            // if error, use powershell as backup
+            let cmd = format!("(Invoke-WebRequest -uri {}).Content", url);
+            let response = output_from(vec![cmd.as_str()]);
+            response
+        }
+    }
+}
 fn getenv(key: &str, default: &str) -> String {
     match env::var(key) {
         Ok(val) => return val,
@@ -206,15 +307,8 @@ fn output_from(args: Vec<&str>) -> String {
         }
     }
 
-    let output = run
-        // record output
-        .stdout(Stdio::piped())
-        // execute the command, wait for it to complete, then capture the output
-        .output()
-        // Blow up if the OS was unable to start the program
-        .unwrap();
+    let output = run.stdout(Stdio::piped()).output().unwrap();
 
-    // extract the raw bytes that we captured and interpret them as a string
     let stdout = String::from_utf8(output.stdout).unwrap();
 
     return stdout;
@@ -247,13 +341,13 @@ fn output_from(args: Vec<&str>) -> String {
 impl OS {
     pub fn username() -> String {
         #[cfg(target_os = "windows")]
-        return getenv("USERNAME", "undefined");
+        return getenv("USERNAME", "onbekend");
         #[cfg(not(target_os = "windows"))]
-        return getenv("USER", "undefined");
+        return getenv("USER", "onbekend");
     }
     #[cfg(target_os = "windows")]
     pub fn hostname() -> String {
-        return getenv("COMPUTERNAME", "undefined");
+        return getenv("COMPUTERNAME", "onbekend");
     }
     #[cfg(not(target_os = "windows"))]
     pub fn hostname() -> String {
@@ -315,10 +409,8 @@ impl Hardware {
     pub fn ram() -> i32 {
         let args = vec!["system_profiler SPHardwareDataType"];
         let total_ram = output_from(args);
-        let mut found = false;
         for i in total_ram.split("\n") {
             if i.trim().starts_with("Memory:") {
-                found = true;
                 return i.trim().split("Memory: ").collect::<Vec<&str>>()[1]
                     .replace("GB", "")
                     .trim()
@@ -326,11 +418,7 @@ impl Hardware {
                     .unwrap();
             }
         }
-        if !found {
-            return 0;
-        } else {
-            return 0;
-        }
+        return 0;
     }
 }
 #[cfg(target_os = "windows")]
@@ -348,16 +436,10 @@ impl Network {
         return ip.trim().to_string();
     }
     pub fn public_ip4() -> String {
-        let response = output_from(vec![
-            "(Invoke-WebRequest -uri http://ifconfig.me/ip).Content",
-        ]);
-        return response.trim().to_string();
+        get("http://ifconfig.me/ip")
     }
     pub fn public_ip6() -> String {
-        let response = output_from(vec![
-            "(Invoke-WebRequest -uri https://api6.ipify.org).Content",
-        ]);
-        return response.trim().to_string();
+        get("https://api6.ipify.org")
     }
 }
 #[cfg(target_os = "macos")]
@@ -414,5 +496,27 @@ impl Disk {
             free: round::floor(freespace as f64 / 1073741824 as f64, 2),
             used: round::floor(usedspace as f64 / 1073741824 as f64, 2),
         };
+    }
+    pub fn new_tup() -> (f64, f64, f64) {
+        let totalspace = output_from(vec!["WMIC logicaldisk get size"])
+            .split("\n")
+            .collect::<Vec<&str>>()[1]
+            .to_string()
+            .trim()
+            .parse::<i64>()
+            .unwrap();
+        let freespace = output_from(vec!["WMIC logicaldisk get freespace"])
+            .split("\n")
+            .collect::<Vec<&str>>()[1]
+            .to_string()
+            .trim()
+            .parse::<i64>()
+            .unwrap();
+        let usedspace: i64 = totalspace - freespace;
+        return (
+            round::floor(totalspace as f64 / 1073741824 as f64, 2),
+            round::floor(freespace as f64 / 1073741824 as f64, 2),
+            round::floor(usedspace as f64 / 1073741824 as f64, 2),
+        );
     }
 }
