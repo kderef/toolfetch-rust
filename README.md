@@ -3,7 +3,7 @@ toolfetch GUI in rust
 
 build instructions:  
 ```
-git clone https://github.com/x-kvoid-x/toolfetch-rust
+git clone https://github.com/Kn-Ht/toolfetch-rust
 cd toolfetch-rust
 cargo build --release
 ```
